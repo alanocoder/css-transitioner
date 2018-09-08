@@ -23,14 +23,23 @@ const TrsnState = {
 interface IState {
     trsnState: number;
 }
+
 export class Transitioner extends React.Component<Props_Trsn, IState> {
     state = { trsnState: TrsnState.Disappeared };
     scrollPos = (this.props.id && Transitioner.scrollMap[this.props.id]) || 0;
-    static skipFirstActiveTrsn = true; // if true (default), skip the very first transition of active component. This is for SPA app that initial page load does not do transition. especially for server-side-rendering.
+    static options = {
+        skipFirstActiveTrsn: true, // if true (default), skip the very first transition of active component. This is for SPA app that initial page load does not do transition. especially for server-side-rendering.
+        trsnClassNameAtBody: 'trsn' // if defined, class name to add to body tag during transition. This allows custom css style for any tags within body during transition. set to null if want to disable it.
+    }
     static scrollMap: { [id: string]: number } = {};
 
+    static manageScrollForRouting() { // call this method to manually manage scrolling when use this component together with client side routing like redux-little-router or redux-first-router
+        if (typeof history === 'object' && 'scrollRestoration' in history) {
+            history.scrollRestoration = 'manual'; // disable scroll history by browser. Instead, maintain by Transitioner
+        }
+    }
     componentDidMount() {
-        if (this.props.active) Transitioner.skipFirstActiveTrsn = false;
+        if (this.props.active) Transitioner.options.skipFirstActiveTrsn = false;
 
         this.updateTransitionState(this.state.trsnState !== TrsnState.Disappeared);
     }
@@ -48,8 +57,8 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
                     // CRITICAL: page first load should not perform transition/animation. because that requires client javascript to execute and start the css animation.
                     // This results in skyrocketed Perceptual Speed Index.
                     // setting state as TrsnState.Appeared for active components will prevent animation during first load.
-                    if (Transitioner.skipFirstActiveTrsn || !props.transitionStyle) return { trsnState: TrsnState.Appeared }; // initial page load, or no style, skip transition
-                    return { trsnState: TrsnState.Appearing };
+                    if (Transitioner.options.skipFirstActiveTrsn || !props.transitionStyle) return { trsnState: TrsnState.Appeared }; // initial page load, or no style, skip transition
+                    break;
                 case TrsnState.Disappearing:
                     // fast user actions that trigger multiple transitions before previous transitions are done
                     // probably user clicks on screen that triggers change of animation of this component
@@ -59,7 +68,7 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
             switch (state.trsnState) {
                 case TrsnState.Appeared:
                     if (!props.transitionStyle) return { trsnState: TrsnState.Disappeared };
-                    return { trsnState: TrsnState.Disappearing };
+                    break;
                 case TrsnState.Appearing:
                     // fast user actions that trigger multiple transitions before previous transitions are done
                     // probably user clicks on screen that triggers change of animation of this component
@@ -76,54 +85,55 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
         var scrollingElement = document.scrollingElement;
         if (this.props.active) {
             switch (this.state.trsnState) {
+                case TrsnState.Disappeared:
+                    this.setState({ trsnState: TrsnState.Appearing });
+                    break;
                 case TrsnState.Appearing:
                     if (this.isTransition()) {
-                        document.body.classList.add('trsn');
-                        setTimeout(() => { // delay execution is needed to ensure DOM gets updated
-                            if (this.scrollPos !== 0) (this.refs['trsn'] as any).style.top = '-' + this.scrollPos + 'px'; // top needs to be set again when the component is re-appeared. (because it's gone when disappeared)
+                        if (Transitioner.options.trsnClassNameAtBody) document.body.classList.add(Transitioner.options.trsnClassNameAtBody);
+                        setTimeout(() => { // delay execution to ensure DOM gets updated
+                            if (this.scrollPos !== 0) trsnTag.style.top = '-' + this.scrollPos + 'px'; // top needs to be set again when the component is re-appeared. (because it's gone when disappeared)
 
                             trsnTag.classList.remove('disappeared');
                             trsnTag.classList.add('appearing');
-                        }, 20); // a slightly more timeout so that disappearing page is off the scrollingElement first before appearing page is added. Otherwise, both appearing/disappearing elements may be all on scrollingElement causing scroll bar to show and hide quickly
+                        }, 5); // a slightly more timeout so that disappearing page is off the scrollingElement first before appearing page is added. Otherwise, both appearing/disappearing elements may be all on scrollingElement causing scroll bar to show and hide quickly
                     } else this.setState({ trsnState: TrsnState.Appeared }); // css transition style not defined
-                    return true;
+                    break;
                 case TrsnState.Appeared:
-                    document.body.classList.remove('trsn');
+                    if (Transitioner.options.trsnClassNameAtBody) document.body.classList.remove(Transitioner.options.trsnClassNameAtBody);
                     if (this.scrollPos > 0 && scrollingElement) {
                         // once page appeared (position should be relative), restore the scroll position
-                        (this.refs['trsn'] as any).style.top = null;
+                        trsnTag.style.top = null;
                         scrollingElement.scrollTop = this.scrollPos;
                     }
                     if (stateChanged && this.props.onAppeared) this.props.onAppeared();
-                    return true;
+                    break;
             }
         } else { // not active
             switch (this.state.trsnState) {
                 case TrsnState.Disappeared:
                     if (stateChanged && this.props.onDisappeared) this.props.onDisappeared();
-                    return true;
-                case TrsnState.Disappearing:
-                    if (scrollingElement && !this.props.ignoreScroll) {
-                        this.scrollPos = scrollingElement.scrollTop; // maintain scroll position, need this even when scrollTop = 0
-                        if (this.props.id) Transitioner.scrollMap[this.props.id] = this.scrollPos;
+                    break;
+                case TrsnState.Appeared:
+                    if (scrollingElement) {
+                        if (!this.props.ignoreScroll) {
+                            this.scrollPos = scrollingElement.scrollTop; // maintain scroll position, need this even when scrollTop = 0
+                            if (this.props.id) Transitioner.scrollMap[this.props.id] = this.scrollPos;
 
-                        if (scrollingElement.scrollTop > 0) { // move to top while keeping page at same spot visually
-                            scrollingElement.scrollTop = 0;
-                            (this.refs['trsn'] as any).style.top = '-' + this.scrollPos + 'px';
-                        }
+                            if (this.scrollPos > 0) { // move to top while keeping page at same spot visually
+                                scrollingElement.scrollTop = 0;
+                                (this.refs['trsn'] as any).style.top = '-' + this.scrollPos + 'px';
+                            }
+                        } else scrollingElement.scrollTop = 0;
                     }
 
-                    if (this.isTransition()) {
-                        setTimeout(() => { // delay execution is needed to ensure DOM gets updated
-                            trsnTag.classList.remove('appeared');
-                            if (this.props.transitionStyle) trsnTag.classList.add(this.props.transitionStyle);
-                            trsnTag.classList.add('disappearing');
-                        }, 10);
-                    } else this.setState({ trsnState: TrsnState.Disappeared }); // css transition style not defined
-                    return true;
+                    this.setState({ trsnState: TrsnState.Disappearing });
+                    break;
+                case TrsnState.Disappearing:
+                    if (!this.isTransition()) this.setState({ trsnState: TrsnState.Disappeared }); // css transition style not defined
+                    break;
             }
         }
-        return false;
     }
 
     componentDidUpdate(prevProps: Props_Trsn, prevState: IState) {
@@ -131,16 +141,14 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
     }
 
     getTrsnRef = () => this.refs['trsn'] as HTMLElement;
-    isTransition = () => {
-        var trsn = this.refs['trsn'] as HTMLElement;
+    isTransition = () => { // determine if transition is enabled or not (from css style definitions). 
         if (typeof window === 'undefined') return false;
-        return getComputedStyle(trsn).getPropertyValue('transition-duration') !== '0s';
+        return getComputedStyle(this.getTrsnRef()).getPropertyValue('transition-duration') !== '0s';
     }
 
     // NOTE: onTransitionEnd can be invoked if this.props.children has some animation. only toggle if this.state.trsnState hasn't reached the correct state yet.
     onFinish = (evt: any) => {
-        console.log('onFinish');
-        if (evt.target !== this.refs['trsn']) return; // this happens when an element inside the block did some animation (e.g. underline bar of the tab bar moves)
+        if (evt.target !== this.getTrsnRef()) return; // this happens when an element inside the block did some animation (e.g. underline bar of the tab bar moves)
         if (this.props.active && this.state.trsnState === TrsnState.Appearing) this.setState({ trsnState: TrsnState.Appeared }); // finished transitioning
         else if (!this.props.active && this.state.trsnState === TrsnState.Disappearing) this.setState({ trsnState: TrsnState.Disappeared }); // finished transitioning
     }
@@ -150,14 +158,16 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
         var cn = transitionStyle;
         switch (this.state.trsnState) {
             case TrsnState.Disappearing:
-                cn = transitionStyle + ' appeared';
+                cn = transitionStyle + ' disappearing';
                 break;
             case TrsnState.Appeared:
                 cn = 'appeared';
                 break;
             case TrsnState.Appearing:
-            case TrsnState.Disappeared:
                 cn = transitionStyle + ' disappeared'; // keep disappeared status first when about to appear again (first rendered) (so it's position is absolute and won't affect the transition of the disappearing component)
+                break;
+            case TrsnState.Disappeared:
+                cn = 'disappeared';
                 break;
         }
         cn += (className ? ' ' + className : '');

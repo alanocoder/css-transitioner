@@ -1,6 +1,6 @@
 {
   "name": "css-transitioner",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "stand alone css transition for routing",
   "main": "index.js",
   "scripts": {
