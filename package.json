@@ -1,0 +1,21 @@
+{
+  "name": "css-transitioner",
+  "version": "0.1.0",
+  "description": "stand alone css transition for routing",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "tsc && echo 'Finished building NPM package \"css-transitioner\"'"
+  },
+  "author": "Alan Chan",
+  "license": "MIT",
+  "types": "index.d.ts",
+  "peerDependencies": {
+    "react": "^15.0.0-0 || ^16.0.0-0"
+  },
+  "devDependencies": {
+    "@types/react": "^16.4.13",
+    "react": "^16.5.0",
+    "react-dom": "^16.5.0",
+    "typescript": "^3.0.3"
+  }
+}
