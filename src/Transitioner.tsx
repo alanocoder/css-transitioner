@@ -89,15 +89,13 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
                     this.setState({ trsnState: TrsnState.Appearing });
                     break;
                 case TrsnState.Appearing:
-                    if (this.isTransition()) {
-                        if (Transitioner.options.trsnClassNameAtBody) document.body.classList.add(Transitioner.options.trsnClassNameAtBody);
-                        setTimeout(() => { // delay execution to ensure DOM gets updated
-                            if (this.scrollPos !== 0) trsnTag.style.top = '-' + this.scrollPos + 'px'; // top needs to be set again when the component is re-appeared. (because it's gone when disappeared)
+                    if (Transitioner.options.trsnClassNameAtBody) document.body.classList.add(Transitioner.options.trsnClassNameAtBody);
+                    setTimeout(() => { // delay execution to ensure DOM gets updated
+                        if (this.scrollPos !== 0) trsnTag.style.top = '-' + this.scrollPos + 'px'; // top needs to be set again when the component is re-appeared. (because it's gone when disappeared)
 
-                            trsnTag.classList.remove('disappeared');
-                            trsnTag.classList.add('appearing');
-                        }, 5); // a slightly more timeout so that disappearing page is off the scrollingElement first before appearing page is added. Otherwise, both appearing/disappearing elements may be all on scrollingElement causing scroll bar to show and hide quickly
-                    } else this.setState({ trsnState: TrsnState.Appeared }); // css transition style not defined
+                        trsnTag.classList.remove('disappeared');
+                        trsnTag.classList.add('appearing');
+                    }, 5); // a slightly more timeout so that disappearing page is off the scrollingElement first before appearing page is added. Otherwise, both appearing/disappearing elements may be all on scrollingElement causing scroll bar to show and hide quickly
                     break;
                 case TrsnState.Appeared:
                     if (Transitioner.options.trsnClassNameAtBody) document.body.classList.remove(Transitioner.options.trsnClassNameAtBody);
@@ -129,9 +127,6 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
 
                     this.setState({ trsnState: TrsnState.Disappearing });
                     break;
-                case TrsnState.Disappearing:
-                    if (!this.isTransition()) this.setState({ trsnState: TrsnState.Disappeared }); // css transition style not defined
-                    break;
             }
         }
     }
@@ -141,10 +136,6 @@ export class Transitioner extends React.Component<Props_Trsn, IState> {
     }
 
     getTrsnRef = () => this.refs['trsn'] as HTMLElement;
-    isTransition = () => { // determine if transition is enabled or not (from css style definitions). 
-        if (typeof window === 'undefined') return false;
-        return getComputedStyle(this.getTrsnRef()).getPropertyValue('transition-duration') !== '0s';
-    }
 
     // NOTE: onTransitionEnd can be invoked if this.props.children has some animation. only toggle if this.state.trsnState hasn't reached the correct state yet.
     onFinish = (evt: any) => {
