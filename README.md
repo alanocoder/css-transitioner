@@ -34,7 +34,7 @@ There is no dependencies other than React and React-dom.
 .fade-in-out {
     position: absolute;
     width: 100%;
-    transition: opacity 1.5s ease-out;
+    transition: opacity .3s ease-out;
 }
 
 .fade-in-out.appearing {
