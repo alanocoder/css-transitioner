@@ -31,19 +31,17 @@ There is no dependencies other than React and React-dom.
     opacity: 0;
 }
 
-.fade-in-out, .fade-in-out.appeared {
-    position: relative;
+.fade-in-out {
+    position: absolute;
     width: 100%;
-    opacity: 1;
-    transition: opacity .3s ease-out;
+    transition: opacity 1.5s ease-out;
 }
 
 .fade-in-out.appearing {
-    position: absolute;
+    opacity: 1;
 }
 
 .fade-in-out.disappearing, .fade-in-out.disappeared {
-    position: absolute;
     opacity: 0;
 }
 ```
